@@ -1,7 +1,6 @@
 # User Added
 config.json
 .idea
-resources/optin-db.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
