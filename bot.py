@@ -11,10 +11,11 @@ Limitations:
 
 
 # Package Imports
-import asyncio
 import json
+import asyncio
 from discord.ext import commands, tasks
 import discord
+from discord import app_commands
 import os
 import platform
 from datetime import datetime, timedelta
@@ -81,7 +82,7 @@ def save_file(filename: str, data: dict):
         json.dump(data, f, indent=2)
 
 
-def user_in_opt_board(user_id: str, filename: str = "resources/optin-db.json"):
+def user_in_opt_board(user_id: int, filename: str = "resources/optin-db.json"):
     """
     Checks for a given user id in optin database
     :param user_id: String - discord user id from message context
@@ -95,7 +96,7 @@ def user_in_opt_board(user_id: str, filename: str = "resources/optin-db.json"):
     return False
 
 
-def opt_in(user_id: str, filename: str = "resources/optin-db.json"):
+def opt_in(user_id: int, filename: str = "resources/optin-db.json"):
     """
     Adds Discord user id to opt-in database
     :param user_id: Discord user id
@@ -110,7 +111,7 @@ def opt_in(user_id: str, filename: str = "resources/optin-db.json"):
     save_file(filename, data)
 
 
-def opt_out(user_id: str, filename: str = "resources/optin-db.json"):
+def opt_out(user_id: int, filename: str = "resources/optin-db.json"):
     """
     Removes Discord user id from opt-in database
     :param user_id: Discord user id
@@ -145,73 +146,71 @@ async def notify_players():
 # ----------------------------------------------------------------------------------------------------------------------
 # BOT COMMANDS
 
-@bot.command(aliases=[])
-async def helltide(ctx):
+@bot.tree.command(name="helltide", description="Opt in/out for Helltide notifications")
+@app_commands.choices(option=[
+    app_commands.Choice(name="Opt In", value="In"),
+    app_commands.Choice(name="Opt Out", value="Out")
+    ]
+)
+async def helltide(interaction: discord.Interaction, option: app_commands.Choice[str]):
     """
     Allows a discord user to opt in to helltide reminders through direct message.
-    :param ctx: Discord message context
-    :return: None
     """
-    author = ctx.message.author
-    if not user_in_opt_board(author.id):
-        msg = await ctx.send(
-            embed=embeds.standard_embed(
-                "React to opt in to Helltide notifications.", color=discord.Color.green()))
-        await msg.add_reaction("✅")
+    author_id = interaction.user.id
+    author_name = interaction.user.name
 
-        try:
-            reaction, user = await bot.wait_for("reaction_add", timeout=15)
-
-            if reaction.emoji == "✅" and user.id == author.id:
-                opt_in(author.id)
-                await msg.delete()
-                await ctx.send(
-                    embed=embeds.standard_embed(
-                        f"You have been added to the notification list, {author.name.title()[:-4]}", color=discord.Color.green()))
-                return
-
-        except asyncio.TimeoutError:
-            await msg.delete()
-            return
-
-    msg = await ctx.send(
-        embed=embeds.standard_embed(
-            "React to opt out of helltide notifications.", color=discord.Color.red()))
-    await msg.add_reaction("❌")
-
-    try:
-        reaction, user = await bot.wait_for("reaction_add", timeout=15)
-
-        if reaction.emoji == "❌" and user.id == author.id:
-            opt_out(author.id)
-            await msg.delete()
-            await ctx.send(
+    if option.value == "In":
+        if not user_in_opt_board(author_id):
+            opt_in(author_id)
+            await interaction.response.send_message(
                 embed=embeds.standard_embed(
-                    f"You have been removed from the notification list, {author.name.title()[:-4]}", color=discord.Color.red()))
+                    f"You have been added to the notification list, {author_name.title()[:-4]}", color=discord.Color.brand_green()
+                )
+            )
             return
 
-    except asyncio.TimeoutError:
-        await msg.delete()
+        await interaction.response.send_message(
+            embed=embeds.standard_embed(
+                f"You are already opted in to Helltide notification {author_name.title()[:-4]}", color=discord.Color.brand_green()
+            )
+        )
+        return
+
+    elif option.value == "Out":
+        if user_in_opt_board(author_id):
+            opt_out(author_id)
+            await interaction.response.send_message(
+                embed=embeds.standard_embed(
+                    f"You have been removed from the notification list, {author_name.title()[:-4]}", color=discord.Color.dark_red()
+                )
+            )
+            return
+
+        await interaction.response.send_message(
+            embed=embeds.standard_embed(
+                f"You are not on the Helltide notification list {author_name.title()[:-4]}", color=discord.Color.dark_red()
+            )
+        )
         return
 
 
-@bot.command(aliases=["hts"])
-async def helltide_start(ctx):
+@bot.tree.command(name="helltide_start", description="Start Helltide timer task")
+async def helltimer(interaction: discord.Interaction, minutes_to_helltide: int):
     """
     Starts the helltide timer task
-    :param ctx: Discord message context
-    :return: None
     """
-    timer_task.start()
-
+    timer_task.stop()
     now = datetime.now()
-    then = now+timedelta(minutes=135)
+    then = now+timedelta(minutes=minutes_to_helltide)
     now_formatted = now.strftime("%H:%M")
     then_formatted = then.strftime("%H:%M")
 
-    await ctx.send(embed=embeds.standard_embed(
-        f"The timer was started at {now_formatted}. The next notification will be at {then_formatted}")
+    await interaction.response.send_message(embed=embeds.standard_embed(
+        f"The timer was started at {now_formatted}. Notifications will cycle starting at {then_formatted}")
     )
+
+    await asyncio.sleep(minutes_to_helltide*60)
+    timer_task.start()
 
 
 @bot.command(aliases=["notest"])
