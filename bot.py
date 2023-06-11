@@ -39,6 +39,8 @@ async def on_ready():
     print(f"Python version: {platform.python_version()}")
     print(f"Running on: {platform.system()} {platform.release()} ({os.name})")
     print("-------------------")
+    synced = await bot.tree.sync()
+    print(f"Slash CMDs Synced {len(synced)} Commands")
 
 
 # ----------------------------------------------------------------------------------------------------------------------
