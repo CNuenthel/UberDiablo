@@ -46,14 +46,13 @@ async def on_ready():
 
 
 @tasks.loop(minutes=135)
-async def timer_task(start_time: datetime.time):
+async def timer_task():
     """
     Activates the notification operation of all opt-in players that helltide is about to begin. Will activate 2h15m
     from start time provided and continuously loop thereafter
-    :param start_time: Datetime time object
-    :return: Null
+    :return: None
     """
-    pass
+    await notify_players()
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -63,7 +62,7 @@ async def timer_task(start_time: datetime.time):
 def load_file(filename: str):
     """
     I'm just sick of writing this, so it's a function. Imagine that.
-    :return: json data
+    :return: json dict
     """
     with open(filename, "r") as f:
         return json.load(f)
@@ -99,7 +98,7 @@ def opt_in(user_id: str, filename: str = "resources/optin-db.json"):
     Adds Discord user id to opt-in database
     :param user_id: Discord user id
     :param filename: Filename to manipulate data from
-    :return: Bool
+    :return: None
     """
     data = load_file(filename)
 
@@ -114,7 +113,7 @@ def opt_out(user_id: str, filename: str = "resources/optin-db.json"):
     Removes Discord user id from opt-in database
     :param user_id: Discord user id
     :param filename: Filename to manipulate data from
-    :return: Bool
+    :return: None
     """
     data = load_file(filename)
 
@@ -127,7 +126,7 @@ def opt_out(user_id: str, filename: str = "resources/optin-db.json"):
 async def notify_players():
     """
     Notify opt-in players that helltide is about to begin through direct message
-    :return:
+    :return: None
     """
     filename = "resources/optin-db.json"
     data = load_file(filename)
@@ -147,7 +146,7 @@ async def notify_players():
 @bot.command(aliases=[])
 async def helltide(ctx):
     """
-    Allows a discord user to opt in to helltide reminders.
+    Allows a discord user to opt in to helltide reminders through direct message.
     :param ctx: Discord message context
     :return: None
     """
@@ -194,7 +193,7 @@ async def helltide(ctx):
         return
 
 
-@bot.command(aliases=[])
+@bot.command(aliases=["hts"])
 async def helltide_start(ctx):
     """
     Starts the helltide timer task
@@ -213,7 +212,7 @@ async def helltide_start(ctx):
     )
 
 
-@bot.command(aliases=[])
+@bot.command(aliases=["notest"])
 async def notification_test(ctx):
     """
     Activates notification for helltide opt in users regardless of timer setting
