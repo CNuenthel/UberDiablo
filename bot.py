@@ -50,7 +50,7 @@ async def on_ready():
 
 @tasks.loop(minutes=135)
 async def timer_task():
-    """
+    """135
     Activates the notification operation of all opt-in players that helltide is about to begin. Will activate 2h15m
     from start time provided and continuously loop thereafter
     :return: None
@@ -164,14 +164,14 @@ async def helltide(interaction: discord.Interaction, option: app_commands.Choice
             opt_in(author_id)
             await interaction.response.send_message(
                 embed=embeds.standard_embed(
-                    f"You have been added to the notification list, {author_name.title()[:-4]}", color=discord.Color.brand_green()
+                    f"You have been added to the notification list, {author_name.title()}", color=discord.Color.brand_green()
                 )
             )
             return
 
         await interaction.response.send_message(
             embed=embeds.standard_embed(
-                f"You are already opted in to Helltide notification {author_name.title()[:-4]}", color=discord.Color.brand_green()
+                f"You are already opted in to Helltide notification {author_name.title()}", color=discord.Color.brand_green()
             )
         )
         return
@@ -181,20 +181,20 @@ async def helltide(interaction: discord.Interaction, option: app_commands.Choice
             opt_out(author_id)
             await interaction.response.send_message(
                 embed=embeds.standard_embed(
-                    f"You have been removed from the notification list, {author_name.title()[:-4]}", color=discord.Color.dark_red()
+                    f"You have been removed from the notification list, {author_name.title()}", color=discord.Color.dark_red()
                 )
             )
             return
 
         await interaction.response.send_message(
             embed=embeds.standard_embed(
-                f"You are not on the Helltide notification list {author_name.title()[:-4]}", color=discord.Color.dark_red()
+                f"You are not on the Helltide notification list {author_name.title()}", color=discord.Color.dark_red()
             )
         )
         return
 
 
-@bot.tree.command(name="helltide_start", description="Start Helltide timer task")
+@bot.tree.command(name="helltimer", description="Start Helltide timer task")
 async def helltimer(interaction: discord.Interaction, minutes_to_helltide: int):
     """
     Starts the helltide timer task
