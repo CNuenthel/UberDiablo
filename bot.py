@@ -1,14 +1,7 @@
 """
 Limitations:
-    Use of a saved file system to record user_id data within concurrent discord command
-    usage allows for possible errors on attempts to access the same folder due to simultaneous
-    commands being issued or bot operations involving the folder
-
-    If a player activates the helltide opt in command while the bot is simultaneously accessing
-    the datafile to issue notifications, it is possible to prevent either operation from
-    accessing the file. Unlikely but not impossible.
+    Shutdown of the bot while helltide timers are activated will remove all timers
 """
-
 
 # Package Imports
 import json
@@ -51,69 +44,14 @@ async def on_ready():
 # ----------------------------------------------------------------------------------------------------------------------
 # BASE FUNCTIONS
 
+def generate_times(start_time):
+    datetime_list = [start_time]
 
-def load_file(filename: str):
-    """
-    I'm just sick of writing this, so it's a function. Imagine that.
-    :return: json dict
-    """
-    with open(filename, "r") as f:
-        return json.load(f)
+    for _ in range(1, 10):
+        next_datetime = datetime_list[-1] + timedelta(minutes=135)
+        datetime_list.append(next_datetime)
 
-
-def save_file(filename: str, data: dict):
-    """
-    Saves given data to given filename
-    :param filename: Filename to manipulate data from
-    :param data: json formatted dictionary
-    :return: None
-    """
-    with open(filename, "w") as f:
-        json.dump(data, f, indent=2)
-
-
-def user_in_opt_board(user_id: int, filename: str = "resources/optin-db.json"):
-    """
-    Checks for a given user id in optin database
-    :param user_id: String - discord user id from message context
-    :param filename: Filename to manipulate data from
-    :return: None
-    """
-    data = load_file(filename)
-
-    if user_id in data["opted_in"]:
-        return True
-    return False
-
-
-def opt_in(user_id: int, filename: str = "resources/optin-db.json"):
-    """
-    Adds Discord user id to opt-in database
-    :param user_id: Discord user id
-    :param filename: Filename to manipulate data from
-    :return: None
-    """
-    data = load_file(filename)
-
-    if user_id not in data["opted_in"]:
-        data["opted_in"].append(user_id)
-
-    save_file(filename, data)
-
-
-def opt_out(user_id: int, filename: str = "resources/optin-db.json"):
-    """
-    Removes Discord user id from opt-in database
-    :param user_id: Discord user id
-    :param filename: Filename to manipulate data from
-    :return: None
-    """
-    data = load_file(filename)
-
-    if user_id in data["opted_in"]:
-        data["opted_in"].remove(user_id)
-
-    save_file(filename, data)
+    return datetime_list
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -155,7 +93,7 @@ async def helltide(inter: discord.Interaction, time_of_next_helltide: str, time_
                 color=discord.Color.dark_red(),
                 title="**__The Armys of Hell Approach__**",
                 footer=datetime.now().strftime("%m/%d/%Y %H:%M")
-                )
+            )
             )
             await asyncio.sleep(delta_seconds)
             await inter.user.send(embed=embeds.standard_embed(
@@ -164,25 +102,16 @@ async def helltide(inter: discord.Interaction, time_of_next_helltide: str, time_
                 title="**__The Blood Rain Falls__**",
                 url="https://diablo4.life/trackers/helltide",
                 footer=datetime.now().strftime("%m/%d/%Y %H:%M"),
-                image="https://cdn.discordapp.com/attachments/788999177442426910/1116944779046027295/RDT_20230609_2319368608710735668798406.jpg"
-                )
+                image="https://cdn.discordapp.com/attachments/788999177442426910/1116944779046027295"
+                      "/RDT_20230609_2319368608710735668798406.jpg "
+            )
             )
 
     except asyncio.TimeoutError:
         await msg.delete()
 
+
 # ----------------------------------------------------------------------------------------------------------------------
-# HELPER FUNCTIONS
-
-
-def generate_times(start_time):
-    datetime_list = [start_time]
-
-    for _ in range(1, 10):
-        next_datetime = datetime_list[-1] + timedelta(minutes=135)
-        datetime_list.append(next_datetime)
-
-    return datetime_list
 
 # ----------------------------------------------------------------------------------------------------------------------
 if __name__ == "__main__":
