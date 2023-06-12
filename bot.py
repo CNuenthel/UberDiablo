@@ -48,16 +48,6 @@ async def on_ready():
 # TASKS
 
 
-@tasks.loop(minutes=135)
-async def timer_task():
-    """135
-    Activates the notification operation of all opt-in players that helltide is about to begin. Will activate 2h15m
-    from start time provided and continuously loop thereafter
-    :return: None
-    """
-    await notify_players()
-
-
 # ----------------------------------------------------------------------------------------------------------------------
 # BASE FUNCTIONS
 
@@ -126,102 +116,73 @@ def opt_out(user_id: int, filename: str = "resources/optin-db.json"):
     save_file(filename, data)
 
 
-async def notify_players():
-    """
-    Notify opt-in players that helltide is about to begin through direct message
-    :return: None
-    """
-    filename = "resources/optin-db.json"
-    data = load_file(filename)
-
-    for user_id in data["opted_in"]:
-        if user_id == "test" or user_id == "test_user_id":
-            continue
-
-        discord_user = bot.get_user(user_id)
-        await discord_user.send(
-            embed=embeds.standard_embed("Helltide will begin soon", "http://diablo4.life/trackers/helltide"))
-
-
 # ----------------------------------------------------------------------------------------------------------------------
 # BOT COMMANDS
 
-@bot.tree.command(name="helltide", description="Opt in/out for Helltide notifications")
-@app_commands.choices(option=[
-    app_commands.Choice(name="Opt In", value="In"),
-    app_commands.Choice(name="Opt Out", value="Out")
-    ]
-)
-async def helltide(interaction: discord.Interaction, option: app_commands.Choice[str]):
-    """
-    Allows a discord user to opt in to helltide reminders through direct message.
-    """
-    author_id = interaction.user.id
-    author_name = interaction.user.name
+@bot.tree.command(name="helltide", description="Sets a notification for the user on a selected Helltide event")
+@app_commands.describe(time_of_next_helltide="Time next helltide is slated to begin in 24 hour format; '13:15'",
+                       time_prior_notification="Early notice in minutes you'd like to be notified")
+async def helltide(inter: discord.Interaction, time_of_next_helltide: str, time_prior_notification: float):
+    reactions = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟']
 
-    if option.value == "In":
-        if not user_in_opt_board(author_id):
-            opt_in(author_id)
-            await interaction.response.send_message(
-                embed=embeds.standard_embed(
-                    f"You have been added to the notification list, {author_name.title()}", color=discord.Color.brand_green()
+    await inter.response.defer(ephemeral=True)
+
+    author = inter.user.id
+
+    given_helltide_time = datetime.strptime(time_of_next_helltide, "%H:%M").time()
+    helltide_start_time = datetime.combine(datetime.today().date(), given_helltide_time)
+    times = generate_times(helltide_start_time)
+    time_library = {k: v for k, v in zip(reactions, times)}
+
+    await inter.followup.send(embed=embeds.standard_embed(text="Stay a while..."))
+
+    msg = await inter.user.send(embed=embeds.timer_embed(times))
+
+    for reaction in reactions:
+        await msg.add_reaction(reaction)
+
+    try:
+        reac, user = await bot.wait_for("reaction_add", timeout=180)
+
+        if user.id == author and str(reac) in reactions:
+            time_to_helltide = time_library[str(reac)]
+            time_delta = (time_to_helltide - datetime.now()) - timedelta(minutes=time_prior_notification)
+            notification_time = datetime.now() + time_delta
+            delta_seconds = int(time_delta.total_seconds())
+
+            await inter.user.send(embed=embeds.standard_embed(
+                text=f"I will notify you at {notification_time.strftime('%H:%M')} of the helltide",
+                color=discord.Color.dark_red(),
+                title="**__The Armys of Hell Approach__**",
+                footer=datetime.now().strftime("%m/%d/%Y %H:%M")
                 )
             )
-            return
-
-        await interaction.response.send_message(
-            embed=embeds.standard_embed(
-                f"You are already opted in to Helltide notification {author_name.title()}", color=discord.Color.brand_green()
-            )
-        )
-        return
-
-    elif option.value == "Out":
-        if user_in_opt_board(author_id):
-            opt_out(author_id)
-            await interaction.response.send_message(
-                embed=embeds.standard_embed(
-                    f"You have been removed from the notification list, {author_name.title()}", color=discord.Color.dark_red()
+            await asyncio.sleep(delta_seconds)
+            await inter.user.send(embed=embeds.standard_embed(
+                text="Helltide is beginning soon",
+                color=discord.Color.dark_red(),
+                title="**__The Blood Rain Falls__**",
+                url="https://diablo4.life/trackers/helltide",
+                footer=datetime.now().strftime("%m/%d/%Y %H:%M"),
+                image="https://cdn.discordapp.com/attachments/788999177442426910/1116944779046027295/RDT_20230609_2319368608710735668798406.jpg"
                 )
             )
-            return
 
-        await interaction.response.send_message(
-            embed=embeds.standard_embed(
-                f"You are not on the Helltide notification list {author_name.title()}", color=discord.Color.dark_red()
-            )
-        )
-        return
+    except asyncio.TimeoutError:
+        await msg.delete()
+
+# ----------------------------------------------------------------------------------------------------------------------
+# HELPER FUNCTIONS
 
 
-@bot.tree.command(name="helltimer", description="Start Helltide timer task")
-async def helltimer(interaction: discord.Interaction, minutes_to_helltide: int):
-    """
-    Starts the helltide timer task
-    """
-    timer_task.stop()
-    now = datetime.now()
-    then = now+timedelta(minutes=minutes_to_helltide)
-    now_formatted = now.strftime("%H:%M")
-    then_formatted = then.strftime("%H:%M")
+def generate_times(start_time):
+    datetime_list = [start_time]
 
-    await interaction.response.send_message(embed=embeds.standard_embed(
-        f"The timer was started at {now_formatted}. Notifications will cycle starting at {then_formatted}")
-    )
+    for _ in range(1, 10):
+        next_datetime = datetime_list[-1] + timedelta(minutes=135)
+        datetime_list.append(next_datetime)
 
-    await asyncio.sleep(minutes_to_helltide*60)
-    timer_task.start()
-
-
-@bot.command(aliases=["notest"])
-async def notification_test(ctx):
-    """
-    Activates notification for helltide opt in users regardless of timer setting
-    :param ctx: Discord message context
-    :return: None
-    """
-    if ctx.author.id == 208970082594848771:
-        await notify_players()
+    return datetime_list
 
 # ----------------------------------------------------------------------------------------------------------------------
 if __name__ == "__main__":
