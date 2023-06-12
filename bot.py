@@ -24,6 +24,9 @@ if __name__ == "__main__":
     with open("config.json", "r") as f:
         config = json.load(f)
 
+# Modify on base time change for helltides
+HELLTIDE_BASE_TIME = datetime(2023, 6, 12, 14, 45, 0)
+
 
 # On Ready data
 @bot.event
@@ -44,32 +47,37 @@ async def on_ready():
 # ----------------------------------------------------------------------------------------------------------------------
 # BASE FUNCTIONS
 
-def generate_times(start_time):
-    datetime_list = [start_time]
+def generate_times(base_time):
+    occurrences = []
+    group_duration = timedelta(hours=2, minutes=15)
+    current_time = datetime.now()
+    time_difference = current_time - base_time
+    remainder_seconds = time_difference.total_seconds() % group_duration.total_seconds()
+    remaining_seconds = group_duration.total_seconds() - remainder_seconds
+    next_occurrence = current_time + timedelta(seconds=remaining_seconds)
+    occurrences.append(next_occurrence)
 
     for _ in range(1, 10):
-        next_datetime = datetime_list[-1] + timedelta(minutes=135)
-        datetime_list.append(next_datetime)
+        next_occurrence += group_duration
+        occurrences.append(next_occurrence)
 
-    return datetime_list
+    return occurrences
+
 
 
 # ----------------------------------------------------------------------------------------------------------------------
 # BOT COMMANDS
 
 @bot.tree.command(name="helltide", description="Sets a notification for the user on a selected Helltide event")
-@app_commands.describe(time_of_next_helltide="Time next helltide is slated to begin in 24 hour format; '13:15'",
-                       time_prior_notification="Early notice in minutes you'd like to be notified")
-async def helltide(inter: discord.Interaction, time_of_next_helltide: str, time_prior_notification: float):
+@app_commands.describe(time_prior_notification="Early notice in minutes you'd like to be notified")
+async def helltide(inter: discord.Interaction, time_prior_notification: float):
     reactions = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟']
 
     await inter.response.defer(ephemeral=True)
 
     author = inter.user.id
 
-    given_helltide_time = datetime.strptime(time_of_next_helltide, "%H:%M").time()
-    helltide_start_time = datetime.combine(datetime.today().date(), given_helltide_time)
-    times = generate_times(helltide_start_time)
+    times = generate_times(HELLTIDE_BASE_TIME)
     time_library = {k: v for k, v in zip(reactions, times)}
 
     await inter.followup.send(embed=embeds.standard_embed(text="Stay a while..."))
@@ -110,6 +118,21 @@ async def helltide(inter: discord.Interaction, time_of_next_helltide: str, time_
     except asyncio.TimeoutError:
         await msg.delete()
 
+
+@bot.tree.command(name="helltimer", description="Sets the base loop time of the helltide timer")
+@app_commands.describe(time_of_next_helltide="Time of next helltide event in a 24 hour format; '13:15'")
+async def helltimer(inter: discord.Interaction, time_of_next_helltide: str):
+    global HELLTIDE_BASE_TIME
+    given_helltide_time = datetime.strptime(time_of_next_helltide, "%H:%M").time()
+    helltide_start_time = datetime.combine(datetime.today().date(), given_helltide_time)
+    HELLTIDE_BASE_TIME = helltide_start_time
+
+    await inter.response.send_message(embed=embeds.standard_embed(
+        text=f"The Helltide loop has been reset to start at {helltide_start_time.time()}",
+        title="**__Helltimer__**",
+        deckard=True,
+        footer=datetime.now().strftime("%m/%d/%Y %H:%M")
+    ))
 
 # ----------------------------------------------------------------------------------------------------------------------
 
