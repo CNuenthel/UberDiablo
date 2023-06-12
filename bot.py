@@ -25,6 +25,7 @@ if __name__ == "__main__":
         config = json.load(f)
 
 # Modify on base time change for helltides
+# Global Var
 HELLTIDE_BASE_TIME = datetime(2023, 6, 12, 14, 45, 0)
 
 
@@ -47,14 +48,24 @@ async def on_ready():
 # ----------------------------------------------------------------------------------------------------------------------
 # BASE FUNCTIONS
 
-def generate_times(base_time):
+def generate_times(base_time: datetime) -> list:
+    """
+    Takes a base time and evaluates each increment of time 135 minutes passed the base time.
+    Observes the first datetime increment past the current time and returns it and 9 future
+    increment datetime objects.
+
+    :param base_time: datetime object holding a base time to evaluate off of
+    :return: list of evaluated datetime objects in the future
+    """
     occurrences = []
     group_duration = timedelta(hours=2, minutes=15)
     current_time = datetime.now()
+
     time_difference = current_time - base_time
     remainder_seconds = time_difference.total_seconds() % group_duration.total_seconds()
     remaining_seconds = group_duration.total_seconds() - remainder_seconds
     next_occurrence = current_time + timedelta(seconds=remaining_seconds)
+
     occurrences.append(next_occurrence)
 
     for _ in range(1, 10):
