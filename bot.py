@@ -134,6 +134,15 @@ async def helltimer(inter: discord.Interaction, time_of_next_helltide: str):
         footer=datetime.now().strftime("%m/%d/%Y %H:%M")
     ))
 
+    author = inter.user.name
+    admin = await bot.fetch_user(208970082594848771)
+    await admin.send(embed=embeds.standard_embed(
+        text=f"{author} has changed the helltide base timer to loop around {helltide_start_time}",
+        title="**__Helltimer Change__**",
+        deckard=True,
+        footer=datetime.now().strftime("%m/%d/%Y %H:%M")
+    ))
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 # ----------------------------------------------------------------------------------------------------------------------
