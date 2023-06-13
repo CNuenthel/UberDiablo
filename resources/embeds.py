@@ -42,17 +42,9 @@ def standard_embed(text: str,
 
 
 def timer_embed(times_list: list, color: discord.Colour = discord.Colour.og_blurple()):
-    formatted_list = [f"{i+1}. {time.time()}" for i, time in enumerate(times_list)]
-    formatted_string = "\n".join(formatted_list)
-
     base = discord.Embed(
-        description=f"**__Upcoming Helltide Times__**\n{formatted_string}",
+        description=f"**__Upcoming Helltide Times__**",
         colour=color,
         title="**And Listen...**"
     )
-    base.set_author(
-        name="Deckard Cain",
-        icon_url="https://static.wikia.nocookie.net/diablo/images/4/4e/Cain_Portrait.png/revision/latest?cb=20180811161630")
-    base.set_footer(text="React to select a time to be notified")
-
     return base
