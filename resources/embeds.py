@@ -1,12 +1,12 @@
 import discord
 from datetime import datetime, time
+import interactions
 
-
-def standard_embed(text: str,
+def standard_embed(text: str = "",
                    title="",
-                   deckard = False,
-                   url: str = None,
-                   color: discord.Colour = discord.Colour.og_blurple(),
+                   deckard=False,
+                   url=None,
+                   color: interactions.Color = interactions.Color.from_hex("#0A20EB"),
                    footer: str = None,
                    image: str = None
                    ):
@@ -15,13 +15,13 @@ def standard_embed(text: str,
     :param text: String phrase to include in body of embed
     :return: Customized embed object for use with discord.py message class
     """
-    base = discord.Embed(
+    base = interactions.Embed(
         description=text,
-        colour=color,
+        color=color,
         title=title
     )
-    if url is not None:
-        base.add_field(name=url, value="", inline=False)
+    if url:
+        base.add_field(name=url, value=" ")
 
     if deckard:
         base.set_author(
@@ -40,11 +40,3 @@ def standard_embed(text: str,
         base.set_image(url=image)
     return base
 
-
-def timer_embed(times_list: list, color: discord.Colour = discord.Colour.og_blurple()):
-    base = discord.Embed(
-        description=f"**__Upcoming Helltide Times__**",
-        colour=color,
-        title="**And Listen...**"
-    )
-    return base
