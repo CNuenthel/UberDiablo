@@ -123,12 +123,12 @@ async def helltide(ctx: SlashContext, time_prior_notification: float):
             custom_id=time.time().strftime("%H:%M"),
             style=ButtonStyle.RED,
             label=time.time().strftime("%H:%M")))
-    btns.append(Button(custom_id="Finished", style=ButtonStyle.BLUE, label="Finished"))
-
+    btns.append(Button(custom_id="Finish", style=ButtonStyle.BLUE, label="Finished"))
+    btns.append(Button(custom_id="Cancel", style=ButtonStyle.BLUE, label="Cancel"))
     components = [
         [btns[0], btns[1], btns[2], btns[3]],
         [btns[4], btns[5], btns[6], btns[7]],
-        [btns[8], btns[9], btns[10]]
+        [btns[8], btns[9], btns[10], btns[11]]
     ]
 
     await ctx.send(embed=embeds.standard_embed(
@@ -138,7 +138,7 @@ async def helltide(ctx: SlashContext, time_prior_notification: float):
         url=None,
         color=interactions.Color.from_hex("#0A20EB"),
         footer=datetime.now().strftime("%m/%d/%Y %H:%M")
-    ))
+    ), ephemeral=True)
     msg = await ctx.user.send(embed=embeds.standard_embed(
         text="Select your helltimers, once complete select finish.",
         title="And listen...",
@@ -148,42 +148,53 @@ async def helltide(ctx: SlashContext, time_prior_notification: float):
         footer=datetime.now().strftime("%m/%d/%Y %H:%M")
     ), components=components)
 
-
+    start = datetime.now()
     notification_times = []
     selecting = True
     while selecting:
+        try:
+            component_time = await bot.wait_for_component(components=components, timeout=180
+                                                          )
 
-        component_time = await bot.wait_for_component(components=components, timeout=180)
+            if component_time.ctx.custom_id == "Finish":
+                formatted_time_list = [time.time().strftime("%H:%M") for time in notification_times]
+                await component_time.ctx.send(embed=embeds.standard_embed(
+                    text=f"You will be notified at these times: {', '.join(formatted_time_list)}",
+                    color=interactions.Color.from_hex("#910620"),
+                    title="**__The Armies of Hell Approach__**",
+                    footer=datetime.now().strftime("%m/%d/%Y %H:%M")))
 
-        if component_time.ctx.custom_id == "Finished":
-            formatted_time_list = [time.time().strftime("%H:%M") for time in notification_times]
-            await component_time.ctx.send(embed=embeds.standard_embed(
-                text=f"You will be notified at these times: {', '.join(formatted_time_list)}",
-                color=interactions.Color.from_hex("#910620"),
-                title="**__The Armies of Hell Approach__**",
-                footer=datetime.now().strftime("%m/%d/%Y %H:%M")))
+                time_splits = find_time_splits(notification_times)
+                await notifier(time_splits, user_id)
 
-            time_splits = find_time_splits(notification_times)
-            await notifier(time_splits, user_id)
+                return
+            elif component_time.ctx.custom_id == "Cancel":
+                await msg.delete()
+                return
 
+            time_diff = time_library[component_time.ctx.custom_id]-timedelta(minutes=time_prior_notification)
+            if time_diff not in notification_times:
+                notification_times.append(time_diff)
+
+            await msg.delete()
+            for row in components:
+                for component in row:
+                    if component.custom_id == component_time.ctx.custom_id:
+                        component.style = ButtonStyle.GREEN
+                        component.disabled = True
+
+            msg = await ctx.user.send(embed=embeds.standard_embed(
+                text="__NEXT AVAILABLE HELLTIMERS__ ",
+                title="And listen...",
+                deckard=True,
+                url=None,
+                color=interactions.Color.from_hex("#0A20EB"),
+                footer=datetime.now().strftime("%m/%d/%Y %H:%M")
+            ), components=components)
+
+        except asyncio.TimeoutError:
+            await msg.delete()
             return
-
-        notification_times.append(time_library[component_time.ctx.custom_id]-timedelta(minutes=time_prior_notification))
-
-        await msg.delete()
-        for row in components:
-            for component in row:
-                if component.custom_id == component_time.ctx.custom_id:
-                    component.style = ButtonStyle.GREEN
-
-        msg = await ctx.user.send(embed=embeds.standard_embed(
-            text="__NEXT AVAILABLE HELLTIMERS__ ",
-            title="And listen...",
-            deckard=True,
-            url=None,
-            color=interactions.Color.from_hex("#0A20EB"),
-            footer=datetime.now().strftime("%m/%d/%Y %H:%M")
-        ), components=components)
 
 
 # @bot.tree.command(name="helltimer", description="Sets the base loop time of the helltide timer")
