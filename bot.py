@@ -118,11 +118,13 @@ async def helltide(ctx: SlashContext, time_prior_notification: float):
 
     time_library = {time.time().strftime("%H:%M"): time for time in times}
     btns = []
+    
     for time in times:
         btns.append(Button(
             custom_id=time.time().strftime("%H:%M"),
             style=ButtonStyle.RED,
             label=time.time().strftime("%H:%M")))
+
     btns.append(Button(custom_id="Finish", style=ButtonStyle.BLUE, label="Finished"))
     btns.append(Button(custom_id="Cancel", style=ButtonStyle.BLUE, label="Cancel"))
     components = [
