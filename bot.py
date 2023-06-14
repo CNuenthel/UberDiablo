@@ -74,6 +74,7 @@ def find_helltide_time(time_dict: dict, ref_time, notification_time) -> [datetim
     delta_seconds = int(time_delta.total_seconds())
     return [notification_time, delta_seconds]
 
+
 def find_time_splits(datetime_list: list):
     now = datetime.now()
     seconds_between = [(datetime_list[0] - now).total_seconds()]
@@ -81,7 +82,7 @@ def find_time_splits(datetime_list: list):
     for i, dt in enumerate(datetime_list):
         if dt == datetime_list[0]:
             continue
-        diff = dt - datetime_list[i-1]
+        diff = dt - datetime_list[i - 1]
         seconds_between.append(diff.seconds)
 
     return seconds_between
@@ -100,10 +101,14 @@ async def notifier(wait_times: list, user_id: int):
             image="https://i.ibb.co/Zf7xS1W/0000.jpg"
         )
         )
+        helltide_library[user_id].pop(0)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
 # BOT COMMANDS
+
+helltide_library = {"user_id": ["dt"]}
+
 
 @slash_command(name="helltide", description="Sets a notification for the user on a selected Helltide event")
 @slash_option(
@@ -116,13 +121,28 @@ async def helltide(ctx: SlashContext, time_prior_notification: float):
     times = generate_times(HELLTIDE_BASE_TIME)
     user_id = ctx.user.id
 
+    if user_id not in helltide_library:
+        helltide_library[user_id] = []
+
     time_library = {time.time().strftime("%H:%M"): time for time in times}
+
     btns = []
+
     for time in times:
+        time = time.time().strftime("%H:%M")
+
+        style = ButtonStyle.RED
+        disabled = False
+        if time in helltide_library[user_id]:
+            style = ButtonStyle.GREEN
+            disabled = True
+
         btns.append(Button(
-            custom_id=time.time().strftime("%H:%M"),
-            style=ButtonStyle.RED,
-            label=time.time().strftime("%H:%M")))
+            custom_id=time,
+            style=style,
+            label=time,
+            disabled=disabled))
+
     btns.append(Button(custom_id="Finish", style=ButtonStyle.BLUE, label="Finished"))
     btns.append(Button(custom_id="Cancel", style=ButtonStyle.BLUE, label="Cancel"))
     components = [
@@ -148,7 +168,6 @@ async def helltide(ctx: SlashContext, time_prior_notification: float):
         footer=datetime.now().strftime("%m/%d/%Y %H:%M")
     ), components=components)
 
-    start = datetime.now()
     notification_times = []
     selecting = True
     while selecting:
@@ -172,9 +191,10 @@ async def helltide(ctx: SlashContext, time_prior_notification: float):
                 await msg.delete()
                 return
 
-            time_diff = time_library[component_time.ctx.custom_id]-timedelta(minutes=time_prior_notification)
-            if time_diff not in notification_times:
-                notification_times.append(time_diff)
+            time_diff = time_library[component_time.ctx.custom_id] - timedelta(minutes=time_prior_notification)
+            notification_times.append(time_diff)
+
+            helltide_library[user_id].append(component_time.ctx.custom_id)
 
             await msg.delete()
             for row in components:
