@@ -6,16 +6,9 @@ Limitations:
 # Package Imports
 import json
 import asyncio
-from discord.ext import commands, tasks
-import discord
-from discord import app_commands
-import os
-import platform
 from datetime import datetime, timedelta
 import interactions
 from interactions import slash_command, SlashContext, ButtonStyle, listen, slash_option, OptionType, Button
-import threading
-import concurrent.futures
 
 # Local Imports
 from resources import embeds
@@ -88,8 +81,8 @@ def find_time_splits(datetime_list: list):
     return seconds_between
 
 
-async def notifier(wait_times: list, user_id: int):
-    for seconds in wait_times:
+async def notifier(wait_times: list, user_id: int, selected_times: list):
+    for i, seconds in enumerate(wait_times):
         await asyncio.sleep(seconds)
         user = await bot.fetch_user(user_id)
         await user.send(embed=embeds.standard_embed(
@@ -101,13 +94,13 @@ async def notifier(wait_times: list, user_id: int):
             image="https://i.ibb.co/Zf7xS1W/0000.jpg"
         )
         )
-        helltide_library[user_id].pop(0)
+        helltide_library[user_id].remove(selected_times[i])
 
 
 # ----------------------------------------------------------------------------------------------------------------------
 # BOT COMMANDS
 
-helltide_library = {"user_id": ["dt"]}
+helltide_library = {}
 
 
 @slash_command(name="helltide", description="Sets a notification for the user on a selected Helltide event")
@@ -119,6 +112,7 @@ helltide_library = {"user_id": ["dt"]}
 )
 async def helltide(ctx: SlashContext, time_prior_notification: float):
     times = generate_times(HELLTIDE_BASE_TIME)
+
     user_id = ctx.user.id
 
     if user_id not in helltide_library:
@@ -169,6 +163,8 @@ async def helltide(ctx: SlashContext, time_prior_notification: float):
     ), components=components)
 
     notification_times = []
+    helltimes = []
+
     selecting = True
     while selecting:
         try:
@@ -184,7 +180,7 @@ async def helltide(ctx: SlashContext, time_prior_notification: float):
                     footer=datetime.now().strftime("%m/%d/%Y %H:%M")))
 
                 time_splits = find_time_splits(notification_times)
-                await notifier(time_splits, user_id)
+                await notifier(time_splits, user_id, helltimes)
 
                 return
             elif component_time.ctx.custom_id == "Cancel":
@@ -192,6 +188,7 @@ async def helltide(ctx: SlashContext, time_prior_notification: float):
                 return
 
             time_diff = time_library[component_time.ctx.custom_id] - timedelta(minutes=time_prior_notification)
+            helltimes.append(component_time.ctx.custom_id)
             notification_times.append(time_diff)
 
             helltide_library[user_id].append(component_time.ctx.custom_id)
